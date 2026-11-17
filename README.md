@@ -1,7 +1,26 @@
+<img src="assets/brand/logo.png" alt="Git Along — Keep the team." width="220">
+
 # Git Along
 
 **Survive the semester. Keep the team.**
 A cozy 2D story game (visual-novel style) that teaches CS students Git and teamwork through choices with consequences. English + Arabic (MSA), no backend, no build step.
+
+**Training for Mastering AI (Workshop)** · Instructor: **Eng. Tarek Khattab**
+
+Team:
+1. Alaa Mohammed
+2. Arwa Salah
+3. Tasnim Maher
+4. Tasneem Abdelhalim
+
+## Documents
+
+| Document | Link |
+| --- | --- |
+| Presentation (PowerPoint, 15 slides) | [`docs/Git-Along-Presentation.pptx`](docs/Git-Along-Presentation.pptx) |
+| PRD v2.1 — Product Requirements | [`docs/Git-Along-PRD-v2.1.pdf`](docs/Git-Along-PRD-v2.1.pdf) |
+| SRS v2.1 — Software Requirements | [`docs/Git-Along-SRS-v2.1.pdf`](docs/Git-Along-SRS-v2.1.pdf) |
+| Logo and icon (SVG + PNG) | [`assets/brand/`](assets/brand/) |
 
 ## Run it
 
@@ -62,5 +81,8 @@ await T.run({ lang: 'ar', address: 'f', track: 'web', policy: 'best', rewindAt: 
 | `js/art.js` | All SVG art: characters with 6 expressions, Pixel, rooms, icons, stickers |
 | `js/ui.js` | Transitions, sheets, modals, toasts |
 | `tests/playthrough.js` | Automated playthrough scenarios |
+| `tests/screens.html` | Drives the game to a named scene for screenshots (used for the slides) |
+| `assets/brand/` | Logo, horizontal lockups and icon |
+| `docs/` | Presentation, PRD and SRS |
 
 To reset progress: Settings → *Reset everything*.

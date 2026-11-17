@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Git Along — screen capture</title>
+<!--
+  Drives the real game (in an iframe) to a named scene and stops there, so a
+  headless browser can screenshot it for docs and slides. Example:
+    chrome --headless=new --window-size=1280,720 --virtual-time-budget=90000 \
+      --screenshot=hub.png "http://localhost:8080/tests/screens.html?scene=hub&lang=en"
+  Params: scene, lang (en|ar), address (m|f), track (web|mobile|ai), name.
+-->
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#FFF2D8}iframe{border:0;width:100vw;height:100vh;display:block}</style>
+</head>
+<body>
+<iframe id="g" title="Git Along"></iframe>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const C = {
+  scene: q.get('scene') || 'title',
+  lang: q.get('lang') || 'en',
+  address: q.get('address') || 'f',
+  track: q.get('track') || 'web',
+};
+C.name = q.get('name') || (C.lang === 'ar' ? (C.address === 'f' ? 'لينا' : 'يوسف') : (C.address === 'f' ? 'Lina' : 'Youssef'));
+const PRESET7 = ['week7', 'merge'].includes(C.scene);
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const frame = document.getElementById('g');
+let W, D, store, STORY, MERGE6;
+const $ = (s, r = D) => r.querySelector(s);
+const $$ = (s, r = D) => [...r.querySelectorAll(s)];
+const shown = el => !!el && !el.hidden && el.offsetParent !== null;
+
+localStorage.clear();
+await new Promise(r => { frame.onload = r; frame.src = '/'; });
+
+async function attach() {
+  W = frame.contentWindow; D = W.document;
+  for (let i = 0; i < 100 && !D.querySelector('#app')?.firstElementChild; i++) await sleep(50);
+  store = (await W.eval("import('/js/store.js')")).store;
+  ({ STORY, MERGE6 } = await W.eval("import('/js/content.js')"));
+  store.state.settings.textSpeed = 'instant';
+  store.state.settings.reduceMotion = true;
+  D.documentElement.classList.add('reduce-motion');
+  const st = D.createElement('style');
+  st.textContent = '*,*::before,*::after{transition:none!important;animation-duration:0s!important;animation-delay:0s!important}';
+  D.head.append(st);
+}
+await attach();
+
+const ALL = {};
+const walk = arr => arr.forEach(s => {
+  if (s.t === 'choice') { ALL[s.id] = s; s.options.forEach(o => o.reply && walk(o.reply)); }
+  if (s.t === 'if') { walk(s.then || []); walk(s.else || []); }
+});
+Object.values(STORY).forEach(p => Object.values(p.scenes).forEach(sc => walk(sc.steps)));
+const best = step => { const qs = step.options.map(o => o.quality ?? 1); return qs.indexOf(Math.max(...qs)); };
+
+let lines = 0, choices = 0, presetDone = false, rethinkPending = false, termRuns = 0;
+const done = () => { document.title = 'READY:' + C.scene; return true; };
+
+async function tick() {
+  const S = C.scene;
+  const modal = $('.modal-scrim');
+  if (modal) { $('[data-yes]', modal).click(); return; }
+  const sheetOpen = $$('.sheet.open').find(s => !s.classList.contains('phone-sheet'));
+  if (sheetOpen) { if (S === 'hint' && $('.hint-card', sheetOpen)) return done(); $('[data-close]', sheetOpen)?.click(); await sleep(80); return; }
+
+  if ($('.lang-grid')) { if (S === 'lang') return done(); $(`[data-l="${C.lang}"]`).click(); await sleep(300); return; }
+
+  if ($('.title-screen')) {
+    if (S === 'title') return done();
+    if (PRESET7 && !presetDone) {
+      presetDone = true;
+      store.state.avatar = { name: C.name, address: C.address, skin: 2, hair: C.address === 'f' ? 'long' : 'short', hairColor: 1, glasses: 'none', outfit: 'hoodie', outfitColor: 1, accessory: 'none' };
+      store.newRun(C.track);
+      ['P', '1', '2', '3', '4', '5'].forEach(p => store.state.run.completedParts.push({ part: p, stars: 3 }));
+      Object.assign(store.state.run.flags, { _hubHint: true, goodReview: true });
+      store.save();
+      await new Promise(r => { frame.onload = r; W.location.reload(); });
+      await attach();
+      return;
+    }
+    ($('[data-a="continue"]') || $('[data-a="new"]')).click(); await sleep(300); return;
+  }
+
+  if ($('.avatar-form')) {
+    if (!$('.avatar-form').dataset.filled) {
+      $('.avatar-form').dataset.filled = '1';
+      $(`[data-k="address"][data-v="${C.address}"]`).click(); await sleep(40);
+      $$('[data-k="skin"]')[C.address === 'f' ? 2 : 3]?.click(); await sleep(40);
+      ($(`[data-k="hair"][data-v="${C.address === 'f' ? 'ponytail' : 'curly'}"]`) || $$('[data-k="hair"]')[0])?.click(); await sleep(40);
+      $$('[data-k="outfit"]')[1]?.click(); await sleep(40);
+      $('#av-name').value = C.name; $('#av-name').dispatchEvent(new W.Event('input')); await sleep(80);
+    }
+    if (S === 'avatar') { $('.avatar-form').closest('.screen').scrollTop = 0; return done(); }
+    $('[data-act="next"]').click(); await sleep(300); return;
+  }
+
+  if ($('.track-grid')) {
+    $(`[data-track="${C.track}"]`).click(); await sleep(60);
+    if (S === 'track') return done();
+    $('[data-start]').click(); await sleep(300); return;
+  }
+  if ($('.chapter-card-screen')) { if (S === 'chapter') return done(); $('[data-go]').click(); await sleep(400); return; }
+
+  const deb = $('.debrief-screen');
+  if (deb) { if (S === 'debrief') return done(); $('[data-cont]', deb).click(); await sleep(250); return; }
+  const fin = $('.done-screen');
+  if (fin) { if (S === 'done') return done(); $('[data-room]', fin).click(); await sleep(400); return; }
+
+  if ($('.map-grid')) { if (S === 'map') return done(); $('[data-part]:not([disabled])')?.click(); await sleep(400); return; }
+  const hub = $('.hub-screen');
+  if (hub) {
+    if (S === 'hub' && store.state.run.completedParts.length >= 1) return done();
+    if (S === 'map') { $('[data-hot-btn="laptop"]', hub).click(); await sleep(500); return; }
+    $('[data-play]', hub)?.click(); await sleep(400); return;
+  }
+
+  const vn = $('.screen.vn');
+  if (!vn) { await sleep(100); return; }
+  const phone = $('.phone-sheet');
+  const pick = phone && $('.chat-pick:not([hidden])', phone);
+  const dlg = $('.choices:not([hidden])', vn);
+  const lap = $('.laptop', vn);
+
+  if (rethinkPending && $$('[data-rewind]:not([hidden]), .chat-compose [data-rw]').some(shown)) { await sleep(300); return done(); }
+
+  if (pick || (dlg && $('.choice', dlg))) {
+    const box = pick || dlg;
+    await sleep(500);
+    if (S === 'choice' && !pick) return done();
+    if (S === 'chat' && pick) return done();
+    if (S === 'hint') { $('[data-chint]', box).click(); await sleep(300); return; }
+    const step = ALL[vn.dataset.choice];
+    const i = step ? best(step) : 0;
+    $$('.choice', box)[i].click(); await sleep(60);
+    $('[data-confirm]', box).click(); await sleep(150);
+    choices++;
+    if (S === 'rethink' || (S === 'chat-sent' && pick)) rethinkPending = true;
+    return;
+  }
+  if (lap && $('.terminal', lap)) {
+    const input = $('input', lap);
+    if (S === 'terminal' && termRuns >= 2) { await sleep(300); return done(); }
+    if (input.disabled) { $('.terminal .btn', lap)?.click(); await sleep(250); return; }
+    $('[data-thint]', lap).click(); await sleep(80);
+    const last = $$('.t-hint', lap).map(x => x.textContent).at(-1) || '';
+    input.value = last.replace(/^.*?(git |cd )/, '$1').trim();
+    input.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    termRuns++; await sleep(300); return;
+  }
+  if (lap && $('.merge', lap)) {
+    if (S === 'merge' && !$('.merge').dataset.shot) {
+      $('.merge').dataset.shot = '1';
+      const blocks = MERGE6[store.state.run.track];
+      $$('.merge-block', lap).forEach((b, i) => { if (i === 0) $(`[data-c="${blocks[i].best}"]`, b)?.click(); });
+      await sleep(300); return done();
+    }
+    const fin2 = $('[data-done]', lap);
+    if (fin2) { fin2.click(); await sleep(300); return; }
+    const blocks = MERGE6[store.state.run.track];
+    $$('.merge-block', lap).forEach((b, i) => $(`[data-c="${blocks[i].best}"]`, b)?.click());
+    await sleep(40); $('[data-check]', lap).click(); await sleep(200); return;
+  }
+  const cont = phone && $('.chat-compose [data-cont]', phone);
+  if (cont) { cont.click(); await sleep(150); return; }
+  const line = $('.dialogue .line', vn);
+  if (line && line.textContent) {
+    lines++;
+    if (S === 'dialogue' && lines >= 7 && $$('.vn .char, .stage .char, [data-who]').length >= 2) { await sleep(300); return done(); }
+    if (S === 'week7' && store.state.run.part === '6' && lines >= 3) { await sleep(300); return done(); }
+  }
+  $('.dialogue', vn).click();
+  await sleep(70);
+}
+
+for (let n = 0; n < 6000; n++) {
+  try { if (await tick() === true) break; } catch (e) { console.error(e); await sleep(100); }
+  await sleep(40);
+}
+</script>
+</body>
+</html>
